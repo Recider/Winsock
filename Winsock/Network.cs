@@ -7,9 +7,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 /*
- * 
+ * inspiration/reference
  * http://www.codeproject.com/Articles/463947/Working-with-Sockets-in-Csharp
- * 
  * 
  */
 namespace Winsock
@@ -18,10 +17,16 @@ namespace Winsock
 	{
 		Socket ServerSocket;
 		Socket ClientSocket;
+
+		// maximum clients handled in one time by ServerSocket
+		// default: 10 (lookat: public Network(int port = 27015, int maxClients = 10) )
 		int MAX_CLIENTS;
 		byte[] buffer;
+
+		// run server in struct mode?
 		bool structComms = false;
 
+		// example struct for sending thru
 		struct exIOStr
 		{
 			public String name;
@@ -29,38 +34,58 @@ namespace Winsock
 			public Decimal decimalNumber;
 		}
 
+		// Network constructor for server role (any)
 		public Network(int port = 27015, int maxClients = 10)
 		{
 			buffer = new byte[1024];
+
+			// ask for permission to bind TCP socket on set port
+			// depends on platform/system settings?
 			var permission = new SocketPermission(NetworkAccess.Accept, TransportType.Tcp, "", SocketPermission.AllPorts);
 			permission.Demand();
+
+			// initializing Socket component
 			ServerSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
 			
+			// there should be ip address to listen to (default 0.0.0.0 (any) ?)
 			IPHostEntry ipHost = Dns.GetHostEntry("");
 			IPAddress ipAddr = ipHost.AddressList[0];
 			IPEndPoint ipEnd = new IPEndPoint(ipAddr, port);
 
+			// bind dat ass
 			ServerSocket.Bind(ipEnd);
 			MAX_CLIENTS = maxClients;
 		}
 
+		// Network constructor for client role
 		public Network(String host = "127.0.0.1", int port = 27015)
 		{
+			// ask for permission to bind TCP socket on set port
+			// depends on platform/system settings?
 			var permission = new SocketPermission(NetworkAccess.Accept, TransportType.Tcp, "", SocketPermission.AllPorts);
 			permission.Demand();
+
+			// initializing Socket component
 			ClientSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
 
+			// ipHost - ip/domain address to connect
 			IPHostEntry ipHost = Dns.GetHostEntry(host);
 			IPAddress ipAddr = ipHost.AddressList[0];
 			IPEndPoint ipEnd = new IPEndPoint(ipAddr, port);
 
+			// connect to server
 			ClientSocket.Connect(ipEnd);
 			
 		}
 
+		// server only
+		// start socket waiting to incoming connections / listening
 		public void Listen(bool structComms = false)
 		{
+			// runs listening on ServerSocket and allows [MAX_CLIENTS] clients to handle (not total!)
 			ServerSocket.Listen(MAX_CLIENTS);
+
+			// create asynchronous callback to AcceptCallback function
 			AsyncCallback aCallback = new AsyncCallback(AcceptCallback);
 
 			// Begins an asynchronous operation to accept an incoming connection attempt from 
@@ -70,6 +95,8 @@ namespace Winsock
 			this.structComms = structComms;
 		}
 
+		// server only
+		// handles clients connection event asynchronously
 		private void AcceptCallback(IAsyncResult ar) 
 		{
 			Socket listener = null;
@@ -78,10 +105,14 @@ namespace Winsock
 
 			try
 			{
+				// prepare to data transmission
 				byte[] buffer = new byte[1024];
 				listener = (Socket)ar.AsyncState;
+
+				// accept connection
 				handler = listener.EndAccept(ar);
 
+				// using Nagle algo
 				handler.NoDelay = false;
 
 				object[] obj = new object[2];
@@ -108,10 +139,12 @@ namespace Winsock
 			}
 		}
 
+		// server only
+		// Begins an asynchronous operation to accept an attempt
 		private void ReceiveCallback(IAsyncResult ar)
 		{
 			Socket handler = null;
-			Console.WriteLine("Client sent a message: ");
+			Console.WriteLine("Received a message from client: ");
 			try
 			{
 				// Fetch a user-defined object that contains information  
@@ -132,18 +165,22 @@ namespace Winsock
 
 				if (bytesRead > 0)
 				{
+					// byte-to-string conversion
 					content = Encoding.Unicode.GetString(buffer, 0, bytesRead);
 					if (structComms)
 					{
+						// byte-to-struct conversion
 						exIOStr recv = ByteArrayToStructure(buffer);
 
 						Console.WriteLine("Name: " + recv.name);
-						Console.WriteLine("Number:" + recv.number);
-						Console.WriteLine("Decimal:" + recv.decimalNumber);
+						Console.WriteLine("Number: " + recv.number);
+						Console.WriteLine("Decimal: " + recv.decimalNumber);
 					}
 					else
 						Console.WriteLine(content);
 
+
+					//re-run listening
 					byte[] buffernew = new byte[1024];
 					obj[0] = buffernew;
 					obj[1] = handler; 
@@ -165,7 +202,6 @@ namespace Winsock
 		{
 			int len = Marshal.SizeOf(obj);
 			byte[] arr = new byte[len];
-
 			
 			try
 			{
@@ -188,6 +224,7 @@ namespace Winsock
 		{
 			exIOStr Srecv =  new exIOStr();
 
+			// check length/sizeof if AccessViolation exception
 			int len = bytearray.Length;
 			IntPtr i = Marshal.AllocHGlobal(len);
 			Marshal.Copy(bytearray, 0, i, len);
@@ -199,9 +236,11 @@ namespace Winsock
 
 		public void SendMessage(String message)
 		{
+			// type "pancernik" to run ExampleStruct Demo
 			if (message == "pancernik") SendExampleStruct();
 			else
 			{
+				// send string via socket
 				byte[] buffer = Encoding.Unicode.GetBytes(message);
 				ClientSocket.BeginSend(buffer, 0, buffer.Length, 0,
 						new AsyncCallback(SendCallback), ClientSocket); 
