@@ -27,7 +27,7 @@ namespace Winsock
 		bool structComms = false;
 
 		// example struct for sending thru
-		struct exIOStr
+		struct SExampleStruct
 		{
 			public String name;
 			public int number;
@@ -170,7 +170,7 @@ namespace Winsock
 					if (structComms)
 					{
 						// byte-to-struct conversion
-						exIOStr recv = ByteArrayToStructure(buffer);
+						SExampleStruct recv = ByteArrayToStructure(buffer);
 
 						Console.WriteLine("Name: " + recv.name);
 						Console.WriteLine("Number: " + recv.number);
@@ -220,15 +220,15 @@ namespace Winsock
 			
 		}
 
-		exIOStr ByteArrayToStructure(byte[] bytearray)
+		SExampleStruct ByteArrayToStructure(byte[] bytearray)
 		{
-			exIOStr Srecv =  new exIOStr();
+			SExampleStruct Srecv =  new SExampleStruct();
 
 			// check length/sizeof if AccessViolation exception
 			int len = bytearray.Length;
 			IntPtr i = Marshal.AllocHGlobal(len);
 			Marshal.Copy(bytearray, 0, i, len);
-			Srecv = (exIOStr)Marshal.PtrToStructure(i, typeof(exIOStr));
+			Srecv = (SExampleStruct)Marshal.PtrToStructure(i, typeof(SExampleStruct));
 			Marshal.FreeHGlobal(i);
 
 			return Srecv;
@@ -265,7 +265,7 @@ namespace Winsock
 
 		public void SendExampleStruct()
 		{
-			exIOStr Call;
+			SExampleStruct Call;
 			Call.name = "Endriju";
 			Call.number = 123;
 			Call.decimalNumber = -3.14157927M;
