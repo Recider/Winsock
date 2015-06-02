@@ -159,7 +159,7 @@ namespace Winsock
 			
 			Console.WriteLine();
 
-			if (host.Length > 0)
+			if (0 == host.Length)
 				host = "127.0.0.1";
 			if (0 == port)
 				port = 27015;
